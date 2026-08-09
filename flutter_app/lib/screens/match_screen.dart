@@ -11,7 +11,7 @@ class MatchScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final person = state.current;
+    final person = state.activePerson;
     return Scaffold(
       backgroundColor: GColors.blue,
       body: SafeArea(
@@ -49,8 +49,10 @@ class MatchScreen extends StatelessWidget {
                         Text('You both looked.', style: GText.display(GColors.white).copyWith(fontSize: 32)),
                         const SizedBox(height: 14),
                         Text(
-                          person.name + ' is still ' + person.distanceLabel +
-                              ' away. Say something before the moment passes.',
+                          person == null
+                              ? 'Say something before the moment passes.'
+                              : person.name + ' is still ' + person.distanceLabel +
+                                  ' away. Say something before the moment passes.',
                           textAlign: TextAlign.center,
                           style: GText.body(Colors.white.withValues(alpha: 0.92)),
                         ),

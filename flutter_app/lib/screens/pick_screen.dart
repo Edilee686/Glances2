@@ -23,11 +23,14 @@ class PickScreen extends StatelessWidget {
       body: AnimatedBuilder(
         animation: state,
         builder: (context, _) {
+          final a = state.pairA;
+          final b = state.pairB;
+          final hasPair = a != null && b != null;
           return Column(
             children: [
               ColoredBox(
                 color: GColors.white,
-                child: const AppHeader(onDark: false, unread: 2),
+                child: AppHeader(onDark: false, unread: state.unread),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 14, 16, 0),
@@ -47,8 +50,8 @@ class PickScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     RoundIconButton(
-                      tooltip: 'Undo last pick',
-                      onTap: () => state.rewind(2),
+                      tooltip: 'Skip this pair',
+                      onTap: () => state.advance(2),
                       child: const Icon(Icons.replay_rounded, size: 20, color: GColors.faint),
                     ),
                   ],
@@ -57,13 +60,37 @@ class PickScreen extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _Candidate(person: state.pairA),
-                      _Candidate(person: state.pairB),
-                    ],
-                  ),
+                  child: hasPair
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _Candidate(person: a!),
+                            _Candidate(person: b!),
+                          ],
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('No pair right now', style: GText.heading(GColors.ink).copyWith(fontSize: 20)),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Stretch the time window, or head back to who is in sight.',
+                                textAlign: TextAlign.center,
+                                style: GText.body(GColors.muted),
+                              ),
+                              const SizedBox(height: 18),
+                              PillButton(
+                                label: 'Back to in sight',
+                                background: GColors.blue,
+                                onPressed: () {
+                                  state.setMode(SightMode.inSight);
+                                  Navigator.pushReplacementNamed(context, Routes.sight);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
                 ),
               ),
               Container(
@@ -92,15 +119,30 @@ class PickScreen extends StatelessWidget {
                             background: GColors.white,
                             foreground: GColors.muted,
                             border: GColors.line,
-                            onPressed: () => state.advance(2),
+                            onPressed: !hasPair
+                                ? null
+                                : () async {
+                                    await state.api.pass(a!.id);
+                                    await state.api.pass(b!.id);
+                                  },
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: PillButton(
                             label: 'Like both',
-                            background: GColors.orange,
-                            onPressed: () => Navigator.pushNamed(context, Routes.match),
+                            background: hasPair ? GColors.orange : GColors.faint,
+                            onPressed: !hasPair
+                                ? null
+                                : () async {
+                                    final first = await state.api.like(a!.id);
+                                    final second = await state.api.like(b!.id);
+                                    if (!context.mounted) return;
+                                    if (first || second) {
+                                      state.openPerson(first ? a.id : b.id);
+                                      Navigator.pushNamed(context, Routes.match);
+                                    }
+                                  },
                           ),
                         ),
                       ],
@@ -129,14 +171,14 @@ class _Candidate extends StatelessWidget {
       label: person.name + ', ' + person.age.toString(),
       child: GestureDetector(
         onTap: () {
-          state.focusPerson(person.id);
+          state.openPerson(person.id);
           Navigator.pushNamed(context, Routes.person);
         },
         child: Stack(
           alignment: Alignment.bottomCenter,
           clipBehavior: Clip.none,
           children: [
-            PhotoCircle(diameter: 214, photoUrl: person.photoUrl),
+            PhotoCircle(diameter: 214, photoUrl: person.photoUrl, name: person.name),
             Positioned(
               bottom: -6,
               child: Container(

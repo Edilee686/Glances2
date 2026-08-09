@@ -8,17 +8,27 @@ import '../widgets/photo_circle.dart';
 class EditProfileScreen extends StatelessWidget {
   const EditProfileScreen({super.key});
 
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
+    return AnimatedBuilder(animation: state, builder: (context, _) => _build(context, state));
+  }
+
+  Widget _build(BuildContext context, AppState state) {
     final fields = <List<String>>[
       ['Name', state.name],
-      ['Location', 'Netanya'],
       ['Gender', state.gender],
-      ['Birthday', '2 November 1988'],
-      ['Height', '171 cm'],
-      ['Hair', 'Blond'],
-      ['Eyes', 'Green'],
+      [
+        'Birthday',
+        state.birthday.day.toString() + ' ' + _months[state.birthday.month - 1] + ' ' + state.birthday.year.toString()
+      ],
+      ['Age', state.age.toString()],
+      ['Interested in', state.interestedIn],
     ];
 
     return Scaffold(
@@ -40,7 +50,16 @@ class EditProfileScreen extends StatelessWidget {
                 ),
                 Expanded(child: Text('Edit profile', style: GText.title(GColors.ink).copyWith(fontSize: 20))),
                 TextButton(
-                  onPressed: () => Navigator.maybePop(context),
+                  onPressed: () {
+                    Navigator.maybePop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: GColors.deep,
+                        content: Text('Profile saved.', style: GText.small(GColors.white)),
+                      ),
+                    );
+                  },
                   child: Text('Save', style: GText.strong(GColors.blue)),
                 ),
               ],
@@ -53,7 +72,7 @@ class EditProfileScreen extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const PhotoCircle(diameter: 132),
+                    PhotoCircle(diameter: 132, name: state.name),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -76,7 +95,9 @@ class EditProfileScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       for (var i = 0; i < fields.length; i++)
-                        Container(
+                        InkWell(
+                          onTap: () => _editField(context, state, fields[i][0]),
+                          child: Container(
                           decoration: BoxDecoration(
                             border: i == fields.length - 1
                                 ? null
@@ -87,8 +108,10 @@ class EditProfileScreen extends StatelessWidget {
                             children: [
                               SizedBox(width: 84, child: Text(fields[i][0], style: GText.label(GColors.faint))),
                               Expanded(child: Text(fields[i][1], style: GText.strong(GColors.ink))),
-                              const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFC6CFD6)),
+                              if (fields[i][0] != 'Age')
+                                const Icon(Icons.edit_outlined, size: 16, color: Color(0xFFC6CFD6)),
                             ],
+                          ),
                           ),
                         ),
                     ],
@@ -103,6 +126,76 @@ class EditProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _editField(BuildContext context, AppState state, String field) async {
+  if (field == 'Age') return;
+
+  if (field == 'Name') {
+    final controller = TextEditingController(text: state.name);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        backgroundColor: GColors.white,
+        title: Text('Name', style: GText.strong(GColors.ink).copyWith(fontSize: 17)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: GText.body(GColors.ink),
+          decoration: const InputDecoration(hintText: 'Your first name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog),
+            child: Text('Cancel', style: GText.strong(GColors.muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, controller.text.trim()),
+            child: Text('Save', style: GText.strong(GColors.blue)),
+          ),
+        ],
+      ),
+    );
+    if (value != null && value.isNotEmpty) state.set(() => state.name = value);
+    return;
+  }
+
+  if (field == 'Birthday') {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: state.birthday,
+      firstDate: DateTime(1940),
+      lastDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+    );
+    if (picked != null) state.set(() => state.birthday = picked);
+    return;
+  }
+
+  final options = field == 'Gender' ? ['Woman', 'Man', 'Other'] : ['Men', 'Women', 'Both'];
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: GColors.white,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final option in options)
+            ListTile(
+              minVerticalPadding: 14,
+              title: Text(option, style: GText.strong(GColors.ink)),
+              onTap: () => Navigator.pop(sheet, option),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null) return;
+  if (field == 'Gender') {
+    state.set(() => state.gender = choice);
+  } else {
+    state.set(() => state.interestedIn = choice);
   }
 }
 

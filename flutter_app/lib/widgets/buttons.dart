@@ -14,7 +14,7 @@ class PillButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color background;
   final Color foreground;
   final Color? border;

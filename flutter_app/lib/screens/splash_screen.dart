@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../routes.dart';
+import '../state/app_state.dart';
 import '../theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -14,8 +15,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1400), () {
-      if (mounted) Navigator.pushReplacementNamed(context, Routes.intro);
+    Future<void>.delayed(const Duration(milliseconds: 1300), () {
+      if (!mounted) return;
+      // Returning users go straight in; the profile they built is still there.
+      final onboarded = AppScope.of(context).onboarded;
+      Navigator.pushReplacementNamed(context, onboarded ? Routes.sight : Routes.intro);
     });
   }
 

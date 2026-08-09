@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/chat_message.dart';
+import '../models/person.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/buttons.dart';
@@ -16,42 +17,72 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final controller = TextEditingController();
   final scroll = ScrollController();
+
+  AppState? _state;
+  Person? person;
   List<ChatMessage> messages = [];
   bool loading = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _attach());
+  }
+
+  Future<void> _attach() async {
+    final state = AppScope.of(context);
+    _state = state;
+    person = state.activePerson;
+    state.api.addListener(_onApiChanged);
+    if (person != null) state.api.markRead(person!.id);
+    await _load();
   }
 
   Future<void> _load() async {
-    final state = AppScope.of(context);
-    final loaded = await state.api.messages(state.current.id);
+    final state = _state;
+    if (state == null || person == null) {
+      setState(() => loading = false);
+      return;
+    }
+    final loaded = await state.api.messages(person!.id);
     if (!mounted) return;
     setState(() {
       messages = List.of(loaded);
       loading = false;
     });
+    _toBottom();
+  }
+
+  /// Replies arrive on their own, so the thread has to follow the store.
+  Future<void> _onApiChanged() async {
+    final state = _state;
+    if (state == null || person == null || !mounted) return;
+    final loaded = await state.api.messages(person!.id);
+    if (!mounted) return;
+    setState(() => messages = List.of(loaded));
+    _toBottom();
   }
 
   Future<void> _send() async {
     final text = controller.text.trim();
-    if (text.isEmpty) return;
-    final state = AppScope.of(context);
+    final state = _state;
+    if (text.isEmpty || state == null || person == null) return;
     controller.clear();
-    await state.api.send(state.current.id, text);
-    if (!mounted) return;
-    setState(() => messages.add(ChatMessage(text: text, mine: true, sentAt: DateTime.now())));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    if (scroll.hasClients) {
-      scroll.animateTo(scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 220), curve: Curves.easeOut);
-    }
+    await state.api.send(person!.id, text);
+  }
+
+  void _toBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scroll.hasClients) {
+        scroll.animateTo(scroll.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 240), curve: Curves.easeOut);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _state?.api.removeListener(_onApiChanged);
     controller.dispose();
     scroll.dispose();
     super.dispose();
@@ -59,8 +90,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final person = state.current;
+    final who = person;
     return Scaffold(
       backgroundColor: GColors.surface,
       body: Column(
@@ -78,15 +108,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   onTap: () => Navigator.maybePop(context),
                   child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: GColors.muted),
                 ),
-                PhotoCircle(diameter: 40, ringWidth: 0, shadow: false, photoUrl: person.photoUrl),
+                PhotoCircle(
+                  diameter: 40,
+                  ringWidth: 0,
+                  shadow: false,
+                  photoUrl: who?.photoUrl,
+                  name: who?.name,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(person.name, style: GText.strong(GColors.ink).copyWith(fontSize: 16)),
-                      Text('still nearby - ' + person.distanceLabel,
-                          style: GText.mono(GColors.green, size: 11), maxLines: 1),
+                      Text(who?.name ?? 'Chat', style: GText.strong(GColors.ink).copyWith(fontSize: 16)),
+                      if (who != null)
+                        Text('still nearby - ' + who.distanceLabel,
+                            style: GText.mono(GColors.green, size: 11), maxLines: 1),
                     ],
                   ),
                 ),
@@ -105,7 +142,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Center(
-                            child: Text('MUTUAL GLANCE - ' + person.city.toUpperCase(),
+                            child: Text('MUTUAL GLANCE' + (who == null ? '' : ' - ' + who.city.toUpperCase()),
                                 style: GText.mono(const Color(0xFFA3AEB8), size: 10)),
                           ),
                         );

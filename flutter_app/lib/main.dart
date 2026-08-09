@@ -17,13 +17,17 @@ import 'screens/pick_screen.dart';
 import 'screens/plus_screen.dart';
 import 'screens/sight_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/api.dart';
+import 'services/local_api.dart';
+import 'services/store.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
-void main() {
-  // Swap MockApi for your implementation of GlancesApi to go live.
-  final state = AppState(MockApi(List.of(mockPeople)));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final store = await Store.open();
+  // LocalApi persists to the device. Implement GlancesApi over HTTP and swap it
+  // in here when the backend is ready - nothing else needs to change.
+  final state = AppState(LocalApi(store, List.of(mockPeople)), store);
   runApp(GlancesApp(state: state));
 }
 
@@ -49,7 +53,10 @@ class GlancesApp extends StatelessWidget {
           Routes.meet: (_) => const MeetScreen(),
           Routes.birthday: (_) => const BirthdayScreen(),
           Routes.photo: (_) => const PhotoScreen(),
-          Routes.sight: (_) => const SightScreen(),
+          Routes.sight: (context) {
+            AppScope.of(context).markOnboarded();
+            return const SightScreen();
+          },
           Routes.pick: (_) => const PickScreen(),
           Routes.person: (_) => const PersonScreen(),
           Routes.match: (_) => const MatchScreen(),

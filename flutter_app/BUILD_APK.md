@@ -65,7 +65,10 @@ Smaller download: `flutter build apk --split-per-abi` → use `app-arm64-v8a-rel
 - **Package id:** `com.glances.app` — change in `android/app/build.gradle` and the `MainActivity.kt` folder path if needed.
 - **First launch needs wifi** — Manrope and DM Mono download once via `google_fonts`, then cache. To go fully offline, drop the TTFs into `assets/google_fonts/` and add that folder to `pubspec.yaml`.
 - **Permissions:** internet + fine/coarse location are declared, but the app doesn't request location at runtime yet. That comes with the real backend.
-- **Data is mock.** Every screen reads `lib/data/mock_people.dart`. Implement `GlancesApi` in `lib/services/api.dart` to hit your server.
+- **The app now really works, locally.** `lib/services/local_api.dart` is a functioning backend that runs on the phone: likes, passes, matches, blocks, chat threads and activity all persist across restarts via `shared_preferences`. Whether a like is mutual is decided per person and never changes its mind. Unanswered likes turn into matches after ~30 seconds, and chat partners reply on their own after a second or two.
+- **People are still fictional.** The six profiles come from `lib/data/mock_people.dart` and distances are fixed numbers, not GPS. When the server exists, implement `GlancesApi` over HTTP and swap it into `main.dart` — no screen needs to change.
+- **No photos yet.** Profiles fall back to a coloured monogram. Give `Person.photoUrl` real URLs and they load.
+- **Reset:** Log out or Delete account in the menu wipes the local store, so you can run the whole flow from scratch.
 - **iOS:** run `flutter create --platforms=ios .` here to generate the Xcode project, then build on a Mac.
 
 ## If a build fails

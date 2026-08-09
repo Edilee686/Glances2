@@ -30,14 +30,18 @@ class AppDrawer extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.35),
                     border: Border.all(color: GColors.white, width: 2.5),
                   ),
-                  child: const Icon(Icons.person_rounded, color: GColors.white),
+                  alignment: Alignment.center,
+                  child: Text(
+                    state.name.isEmpty ? '?' : state.name.substring(0, 1).toUpperCase(),
+                    style: GText.heading(GColors.white).copyWith(fontSize: 22),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(state.name + ', 37',
+                      Text(state.name + ', ' + state.age.toString(),
                           style: GText.heading(GColors.white).copyWith(fontSize: 17), overflow: TextOverflow.ellipsis),
                       GestureDetector(
                         onTap: () {
@@ -151,27 +155,50 @@ class AppDrawer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
+                ListTile(
+                  minVerticalPadding: 12,
+                  title: Text('Matches', style: GText.strong(GColors.ink)),
+                  trailing: Text(state.matches.length.toString(), style: GText.mono(GColors.faint, size: 12)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, Routes.activity);
+                  },
+                ),
                 for (final item in const [
-                  ['Notifications', 'ink'],
-                  ['Invite friends', 'ink'],
-                  ['Share Glances', 'ink'],
-                  ['Contact us', 'ink'],
-                  ['Privacy policy and Terms of use', 'ink'],
-                  ['Log out', 'orange'],
-                  ['Delete account', 'danger'],
+                  'Notifications',
+                  'Invite friends',
+                  'Share Glances',
+                  'Contact us',
+                  'Privacy policy and Terms of use',
                 ])
                   ListTile(
                     minVerticalPadding: 12,
-                    title: Text(
-                      item[0],
-                      style: GText.strong(item[1] == 'orange'
-                          ? GColors.orange
-                          : item[1] == 'danger'
-                              ? GColors.danger
-                              : GColors.ink),
-                    ),
-                    onTap: () => Navigator.pop(context),
+                    title: Text(item, style: GText.strong(GColors.ink)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: GColors.deep,
+                          content: Text(item + ' is not wired up in this build.',
+                              style: GText.small(GColors.white)),
+                        ),
+                      );
+                    },
                   ),
+                ListTile(
+                  minVerticalPadding: 12,
+                  title: Text('Log out', style: GText.strong(GColors.orange)),
+                  onTap: () => _confirmReset(context, state,
+                      title: 'Log out?', body: 'You will land back at the start.'),
+                ),
+                ListTile(
+                  minVerticalPadding: 12,
+                  title: Text('Delete account', style: GText.strong(GColors.danger)),
+                  onTap: () => _confirmReset(context, state,
+                      title: 'Delete account?',
+                      body: 'Your profile, likes and chats on this device are erased.'),
+                ),
               ],
             ),
           ),
@@ -179,6 +206,33 @@ class AppDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Log out and delete both clear the local store and restart at the splash.
+Future<void> _confirmReset(BuildContext context, AppState state,
+    {required String title, required String body}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      backgroundColor: GColors.white,
+      title: Text(title, style: GText.strong(GColors.ink).copyWith(fontSize: 17)),
+      content: Text(body, style: GText.body(GColors.muted)),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, false),
+          child: Text('Cancel', style: GText.strong(GColors.muted)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, true),
+          child: Text('Confirm', style: GText.strong(GColors.danger)),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  await state.resetEverything();
+  if (!context.mounted) return;
+  Navigator.of(context).pushNamedAndRemoveUntil(Routes.splash, (route) => false);
 }
 
 class _Toggle extends StatelessWidget {
