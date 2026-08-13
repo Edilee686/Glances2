@@ -27,6 +27,11 @@ jobs:
 
       - run: flutter --version
 
+      - name: Regenerate Android project
+        run: |
+          rm -rf android
+          flutter create --platforms=android --org com.glances --project-name glances .
+
       - name: Drop superseded sources
         run: |
           rm -rf lib/data test
@@ -46,11 +51,6 @@ jobs:
                 lib/widgets/photo_circle.dart \
                 lib/widgets/range_row.dart \
                 lib/widgets/wave.dart
-
-      - name: Regenerate Android project
-        run: |
-          rm -rf android
-          flutter create --platforms=android --org com.glances --project-name glances .
 
       - name: Apply app permissions and name
         run: |
@@ -77,7 +77,7 @@ jobs:
       - run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze lib --no-fatal-infos --no-fatal-warnings
 
       - name: Build release APK
         run: flutter build apk --release
