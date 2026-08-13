@@ -36,12 +36,13 @@ class CurvedSheetClipper extends CustomClipper<Path> {
 class CurvedSheet extends StatelessWidget {
   const CurvedSheet({
     super.key,
-    required this.child,
+    this.child,
     this.color = GColors.white,
     this.bulge = 0.128,
   });
 
-  final Widget child;
+  /// Optional - the sheet is usually just a coloured backdrop.
+  final Widget? child;
   final Color color;
   final double bulge;
 
@@ -49,7 +50,7 @@ class CurvedSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipPath(
       clipper: CurvedSheetClipper(bulge: bulge),
-      child: Container(color: color, child: child),
+      child: SizedBox.expand(child: ColoredBox(color: color, child: child)),
     );
   }
 }
