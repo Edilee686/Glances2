@@ -1,55 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class GColors {
-  static const orange = Color(0xFFF0800F);
-  static const orangeDark = Color(0xFFD96C00);
-  static const blue = Color(0xFF2CB0E8);
-  static const blueDark = Color(0xFF1791C4);
-  static const deep = Color(0xFF14324A);
-  static const ink = Color(0xFF14171A);
-  static const muted = Color(0xFF67717A);
-  static const faint = Color(0xFF98A2AC);
-  static const line = Color(0xFFE1E6EA);
-  static const surface = Color(0xFFF6F9FB);
-  static const white = Color(0xFFFFFFFF);
-  static const green = Color(0xFF23B26B);
-  static const danger = Color(0xFFC0392B);
-  static const tint = Color(0xFFEAF7FD);
+/// Every number in this app is transcribed from the 1080x1920 Figma frames.
+/// [fx] converts a Figma pixel into a logical pixel on the current screen, so
+/// the layout stays proportionally identical on any handset.
+const double kFigmaWidth = 1080;
+const double kFigmaHeight = 1920;
+
+double fx(BuildContext context, double figmaPx) =>
+    figmaPx * MediaQuery.sizeOf(context).width / kFigmaWidth;
+
+extension FigNum on num {
+  double x(BuildContext context) => fx(context, toDouble());
 }
 
+class GColors {
+  static const cyan = Color(0xFF3CBEEE); // rgb(60,190,238) panels + primary
+  static const blue = Color(0xFF25A7DF); // rgb(37,167,223) logo blue
+  static const skyLight = Color(0xFF7DC6EE); // rgb(125,198,238)
+  static const orange = Color(0xFFF37C11); // rgb(243,124,17)
+  static const facebook = Color(0xFF13508B); // rgb(19,80,139)
+  static const grey = Color(0xFF5D5D5D); // rgb(93,93,93) body text
+  static const greyMid = Color(0xFF777777);
+  static const greyLine = Color(0xFFAEAEAE); // rgb(174,174,174)
+  static const greyDim = Color(0xFFCDCDCD); // rgb(205,205,205)
+  static const greyFaint = Color(0xFFE0E0E0); // rgb(224,224,224) placeholder
+  static const circle = Color(0xFFEEEEEE); // rgb(238,238,238) empty photo
+  static const white = Color(0xFFFFFFFF);
+  static const scrim = Color(0xFF202020);
+  static const gradientBottom = Color(0xFFABD6EF); // splash gradient end
+}
+
+/// Mukta at Figma sizes. Pass the Figma font size; it is scaled for you.
 class GText {
-  static TextStyle display(Color c) =>
-      GoogleFonts.manrope(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.7, color: c, height: 1.15);
-  static TextStyle title(Color c) =>
-      GoogleFonts.manrope(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: c, height: 1.2);
-  static TextStyle heading(Color c) =>
-      GoogleFonts.manrope(fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.35, color: c);
-  static TextStyle body(Color c) =>
-      GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w500, color: c, height: 1.5);
-  static TextStyle strong(Color c) =>
-      GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700, color: c);
-  static TextStyle small(Color c) =>
-      GoogleFonts.manrope(fontSize: 12.5, fontWeight: FontWeight.w500, color: c, height: 1.5);
-  static TextStyle label(Color c) =>
-      GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: c);
-  static TextStyle mono(Color c, {double size = 11.5}) =>
-      GoogleFonts.dmMono(fontSize: size, fontWeight: FontWeight.w400, color: c, letterSpacing: 0.6);
+  static TextStyle fig(BuildContext context, double figmaSize, Color color,
+          {FontWeight weight = FontWeight.w400, double height = 1.15}) =>
+      GoogleFonts.mukta(
+        fontSize: fx(context, figmaSize),
+        fontWeight: weight,
+        color: color,
+        height: height,
+      );
 }
 
 ThemeData glancesTheme() {
   final base = ThemeData.light(useMaterial3: true);
   return base.copyWith(
-    scaffoldBackgroundColor: GColors.surface,
+    scaffoldBackgroundColor: GColors.white,
     colorScheme: base.colorScheme.copyWith(
-      primary: GColors.blue,
+      primary: GColors.cyan,
       secondary: GColors.orange,
       surface: GColors.white,
     ),
-    textTheme: GoogleFonts.manropeTextTheme(base.textTheme),
+    textTheme: GoogleFonts.muktaTextTheme(base.textTheme),
     splashFactory: InkRipple.splashFactory,
   );
 }
-
-/// Minimum tap target used across the app (iOS HIG 44, Material 48).
-const double kTapTarget = 48;

@@ -1,6 +1,7 @@
 class Routes {
   static const splash = '/';
-  static const intro = '/intro';
+  static const join = '/join';
+  static const verify = '/verify';
   static const name = '/onboarding/name';
   static const gender = '/onboarding/gender';
   static const meet = '/onboarding/meet';
@@ -14,4 +15,5 @@ class Routes {
   static const chat = '/chat';
   static const editProfile = '/profile/edit';
   static const plus = '/plus';
+  static const menu = '/menu';
 }

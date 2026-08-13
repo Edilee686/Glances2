@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../models/person.dart';
+import '../models/models.dart';
 import '../routes.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
-import '../widgets/app_header.dart';
-import '../widgets/buttons.dart';
-import '../widgets/photo_circle.dart';
-import '../widgets/range_row.dart';
-import 'app_drawer.dart';
+import '../widgets/fig.dart';
 
-/// Pick one of two people seen in the last 30 minutes.
+/// Frame 13: two people you passed recently - pick one, or judge both at once.
 class PickScreen extends StatelessWidget {
   const PickScreen({super.key});
 
@@ -18,135 +14,91 @@ class PickScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Scaffold(
-      backgroundColor: GColors.surface,
-      drawer: const AppDrawer(),
+      backgroundColor: GColors.white,
       body: AnimatedBuilder(
         animation: state,
         builder: (context, _) {
-          final a = state.pairA;
-          final b = state.pairB;
-          final hasPair = a != null && b != null;
-          return Column(
+          final pool = state.recent;
+          final a = pool.isNotEmpty ? pool[0] : null;
+          final b = pool.length > 1 ? pool[1] : null;
+
+          return Stack(
             children: [
-              ColoredBox(
-                color: GColors.white,
-                child: AppHeader(onDark: false, unread: state.unread),
+              SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.95,
+                width: double.infinity,
+                child: const CurvedSheet(color: GColors.cyan, bulge: 0.115),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 14, 16, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              SafeArea(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: fx(context, 30), vertical: fx(context, 20)),
+                      child: Row(
                         children: [
-                          Text('Who did you just see?', style: GText.heading(GColors.ink)),
-                          const SizedBox(height: 4),
-                          Text('People near you in the last ' + state.withinMinutes.toString() + ' minutes.',
-                              style: GText.small(GColors.muted)),
+                          FigChevron(onTap: () => Navigator.maybePop(context)),
+                          const Spacer(),
+                          const FigWordmark(),
+                          const Spacer(),
+                          SizedBox(width: fx(context, 100)),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    RoundIconButton(
-                      tooltip: 'Skip this pair',
-                      onTap: () => state.advance(2),
-                      child: const Icon(Icons.replay_rounded, size: 20, color: GColors.faint),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: hasPair
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _Candidate(person: a!),
-                            _Candidate(person: b!),
-                          ],
-                        )
-                      : Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('No pair right now', style: GText.heading(GColors.ink).copyWith(fontSize: 20)),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Stretch the time window, or head back to who is in sight.',
-                                textAlign: TextAlign.center,
-                                style: GText.body(GColors.muted),
-                              ),
-                              const SizedBox(height: 18),
-                              PillButton(
-                                label: 'Back to in sight',
-                                background: GColors.blue,
-                                onPressed: () {
-                                  state.setMode(SightMode.inSight);
-                                  Navigator.pushReplacementNamed(context, Routes.sight);
-                                },
-                              ),
-                            ],
+                    if (a == null || b == null)
+                      Expanded(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: fx(context, 100)),
+                            child: Text(
+                              'No pair to compare right now',
+                              textAlign: TextAlign.center,
+                              style: GText.fig(context, 50, GColors.white),
+                            ),
                           ),
                         ),
-                ),
-              ),
-              Container(
-                decoration: const BoxDecoration(
-                  color: GColors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE8EDF1))),
-                ),
-                padding: EdgeInsets.fromLTRB(24, 10, 24, MediaQuery.paddingOf(context).bottom + 18),
-                child: Column(
-                  children: [
-                    RangeRow(
-                      minLabel: 'Now',
-                      maxLabel: '30 min',
-                      min: 0,
-                      max: 30,
-                      value: state.withinMinutes.toDouble(),
-                      caption: state.withinMinutes.toString() + ' MIN AGO',
-                      onChanged: (v) => state.setMinutes(v.round()),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: PillButton(
+                      )
+                    else ...[
+                      const Spacer(),
+                      _Candidate(person: a),
+                      SizedBox(height: fx(context, 50)),
+                      _Candidate(person: b),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          FigButton(
                             label: 'Pass both',
-                            background: GColors.white,
-                            foreground: GColors.muted,
-                            border: GColors.line,
-                            onPressed: !hasPair
-                                ? null
-                                : () async {
-                                    await state.api.pass(a!.id);
-                                    await state.api.pass(b!.id);
-                                  },
+                            width: 420,
+                            background: GColors.white.withValues(alpha: 0.25),
+                            foreground: GColors.white,
+                            fontSize: 42,
+                            onTap: () async {
+                              await state.pass(a.id);
+                              await state.pass(b.id);
+                            },
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: PillButton(
+                          SizedBox(width: fx(context, 40)),
+                          FigButton(
                             label: 'Like both',
-                            background: hasPair ? GColors.orange : GColors.faint,
-                            onPressed: !hasPair
-                                ? null
-                                : () async {
-                                    final first = await state.api.like(a!.id);
-                                    final second = await state.api.like(b!.id);
-                                    if (!context.mounted) return;
-                                    if (first || second) {
-                                      state.openPerson(first ? a.id : b.id);
-                                      Navigator.pushNamed(context, Routes.match);
-                                    }
-                                  },
+                            width: 420,
+                            background: GColors.white,
+                            foreground: GColors.cyan,
+                            fontSize: 42,
+                            onTap: () async {
+                              final first = await state.like(a.id);
+                              final second = await state.like(b.id);
+                              if (!context.mounted) return;
+                              if (first || second) {
+                                state.open(first ? a.id : b.id);
+                                Navigator.pushNamed(context, Routes.match);
+                              }
+                            },
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
+                    SizedBox(height: fx(context, 50)),
                   ],
                 ),
               ),
@@ -161,35 +113,32 @@ class PickScreen extends StatelessWidget {
 class _Candidate extends StatelessWidget {
   const _Candidate({required this.person});
 
-  final Person person;
+  final Profile person;
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return Semantics(
-      button: true,
-      label: person.name + ', ' + person.age.toString(),
-      child: GestureDetector(
-        onTap: () {
-          state.openPerson(person.id);
-          Navigator.pushNamed(context, Routes.person);
-        },
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          clipBehavior: Clip.none,
-          children: [
-            PhotoCircle(diameter: 214, photoUrl: person.photoUrl, name: person.name),
-            Positioned(
-              bottom: -6,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(color: GColors.deep, borderRadius: BorderRadius.circular(999)),
-                child: Text(person.name + ', ' + person.age.toString(),
-                    style: GText.label(GColors.white), maxLines: 1),
-              ),
-            ),
-          ],
-        ),
+    return GestureDetector(
+      onTap: () {
+        state.open(person.id);
+        Navigator.pushNamed(context, Routes.person);
+      },
+      child: Column(
+        children: [
+          FigAvatar(
+            size: 470,
+            photoPath: person.photoPath,
+            name: person.name,
+            ringColor: GColors.white,
+            ringWidth: 14,
+            shadow: true,
+          ),
+          SizedBox(height: fx(context, 16)),
+          Text(
+            person.name + (person.age > 0 ? ' ' + person.age.toString() : ''),
+            style: GText.fig(context, 44, GColors.white),
+          ),
+        ],
       ),
     );
   }

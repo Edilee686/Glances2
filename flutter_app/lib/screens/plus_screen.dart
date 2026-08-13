@@ -2,150 +2,87 @@ import 'package:flutter/material.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
-import '../widgets/buttons.dart';
+import '../widgets/fig.dart';
+import '../widgets/heart.dart';
 
+/// Frames 29/37-41/44: the Plus paywall and its five perks.
 class PlusScreen extends StatelessWidget {
   const PlusScreen({super.key});
 
-  static const plans = [
-    ['1 MONTH', '\u002415', 'Total \u002415'],
-    ['3 MONTHS', '\u002412', 'Save 20%'],
-    ['6 MONTHS', '\u002410', 'Save 33%'],
+  static const _perks = [
+    'Unlimited instant Likes',
+    'Unlimited Pass both or Like both',
+    'Send a Like with timer',
+    'Undo Likes',
+    'No ads',
   ];
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Scaffold(
-      backgroundColor: GColors.deep,
-      body: SafeArea(
-        child: AnimatedBuilder(
-          animation: state,
-          builder: (context, _) => Padding(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 20),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: RoundIconButton(
-                    tooltip: 'Close',
-                    onTap: () => Navigator.maybePop(context),
-                    child: Icon(Icons.close_rounded, color: Colors.white.withValues(alpha: 0.6)),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        Text('GLANCES', style: GText.display(GColors.orange).copyWith(fontSize: 30)),
-                        Text('PLUS', style: GText.mono(GColors.blue, size: 12).copyWith(letterSpacing: 4)),
-                        const SizedBox(height: 18),
-                        Container(
-                          width: 124,
-                          height: 124,
-                          decoration: const BoxDecoration(color: GColors.white, shape: BoxShape.circle),
-                          alignment: Alignment.center,
-                          child: Image.asset('assets/images/mark.png', width: 70),
-                        ),
-                        const SizedBox(height: 18),
-                        Text('Unlimited passes and like both',
-                            textAlign: TextAlign.center,
-                            style: GText.title(GColors.white).copyWith(fontSize: 19)),
-                        const SizedBox(height: 18),
-                        Row(
+      backgroundColor: GColors.cyan,
+      body: AnimatedBuilder(
+        animation: state,
+        builder: (context, _) => SafeArea(
+          child: Column(
+            children: [
+              SizedBox(height: fx(context, 70)),
+              TwoTonedHeart(size: fx(context, 230), solid: GColors.white),
+              SizedBox(height: fx(context, 40)),
+              Text('GLANCES PLUS',
+                  style: GText.fig(context, 64, GColors.white, weight: FontWeight.w600)),
+              SizedBox(height: fx(context, 16)),
+              Text('Unlimited passes & like both',
+                  style: GText.fig(context, 44, GColors.white.withValues(alpha: 0.9))),
+              SizedBox(height: fx(context, 70)),
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.symmetric(horizontal: fx(context, 120)),
+                  children: [
+                    for (final perk in _perks)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: fx(context, 44)),
+                        child: Row(
                           children: [
-                            for (var i = 0; i < plans.length; i++) ...[
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => state.set(() => state.planIndex = i),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      color: state.planIndex == i
-                                          ? GColors.orange.withValues(alpha: 0.14)
-                                          : Colors.white.withValues(alpha: 0.06),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: state.planIndex == i
-                                            ? GColors.orange
-                                            : Colors.white.withValues(alpha: 0.14),
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Text(plans[i][0],
-                                            style: GText.label(GColors.white).copyWith(fontSize: 11),
-                                            maxLines: 1),
-                                        const SizedBox(height: 6),
-                                        Text(plans[i][1], style: GText.title(GColors.white).copyWith(fontSize: 18)),
-                                        Text('per month',
-                                            style: GText.small(Colors.white.withValues(alpha: 0.6))
-                                                .copyWith(fontSize: 10.5)),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          plans[i][2],
-                                          maxLines: 1,
-                                          style: GText.label(state.planIndex == i
-                                                  ? GColors.orange
-                                                  : Colors.white.withValues(alpha: 0.6))
-                                              .copyWith(fontSize: 11),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (i < plans.length - 1) const SizedBox(width: 9),
-                            ],
+                            Icon(Icons.check_rounded,
+                                color: GColors.white, size: fx(context, 60)),
+                            SizedBox(width: fx(context, 30)),
+                            Expanded(
+                              child: Text(perk, style: GText.fig(context, 44, GColors.white)),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        _Benefit('See everyone who liked you'),
-                        const SizedBox(height: 8),
-                        _Benefit('Look back further than 30 minutes'),
-                      ],
-                    ),
-                  ),
+                      ),
+                  ],
                 ),
-                PillButton(
-                  label: 'Continue',
-                  background: GColors.orange,
-                  onPressed: () => Navigator.maybePop(context),
+              ),
+              FigButton(
+                label: state.plus ? 'You have Plus' : 'Continue',
+                background: GColors.white,
+                foreground: GColors.cyan,
+                onTap: state.plus
+                    ? null
+                    : () async {
+                        await state.buyPlus();
+                        if (!context.mounted) return;
+                        Navigator.maybePop(context);
+                      },
+              ),
+              SizedBox(height: fx(context, 24)),
+              GestureDetector(
+                onTap: () => Navigator.maybePop(context),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: EdgeInsets.all(fx(context, 24)),
+                  child: Text('No, thanks.', style: GText.fig(context, 44, GColors.white)),
                 ),
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => Navigator.maybePop(context),
-                  child: Text('No, thanks', style: GText.body(Colors.white.withValues(alpha: 0.55))),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(height: fx(context, 30)),
+            ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Benefit extends StatelessWidget {
-  const _Benefit(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 5,
-          height: 5,
-          decoration: const BoxDecoration(color: GColors.orange, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(text, style: GText.body(Colors.white.withValues(alpha: 0.85)).copyWith(fontSize: 13.5)),
-        ),
-      ],
     );
   }
 }

@@ -60,27 +60,80 @@ Smaller download: `flutter build apk --split-per-abi` → use `app-arm64-v8a-rel
 
 ---
 
-## Notes on this MVP
-- **Signing:** release builds use the debug key, so this works with no keystore setup. Fine for sideloading and testing; make a real keystore before any Play Store upload.
-- **Package id:** `com.glances.app` — change in `android/app/build.gradle` and the `MainActivity.kt` folder path if needed.
-- **First launch needs wifi** — Manrope and DM Mono download once via `google_fonts`, then cache. To go fully offline, drop the TTFs into `assets/google_fonts/` and add that folder to `pubspec.yaml`.
-- **Permissions:** internet + fine/coarse location are declared, but the app doesn't request location at runtime yet. That comes with the real backend.
-- **The app now really works, locally.** `lib/services/local_api.dart` is a functioning backend that runs on the phone: likes, passes, matches, blocks, chat threads and activity all persist across restarts via `shared_preferences`. Whether a like is mutual is decided per person and never changes its mind. Unanswered likes turn into matches after ~30 seconds, and chat partners reply on their own after a second or two.
-- **People are still fictional.** The six profiles come from `lib/data/mock_people.dart` and distances are fixed numbers, not GPS. When the server exists, implement `GlancesApi` over HTTP and swap it into `main.dart` — no screen needs to change.
-- **No photos yet.** Profiles fall back to a coloured monogram. Give `Person.photoUrl` real URLs and they load.
-- **Reset:** Log out or Delete account in the menu wipes the local store, so you can run the whole flow from scratch.
-- **iOS:** run `flutter create --platforms=ios .` here to generate the Xcode project, then build on a Mac.
+## What this build is
+
+Rebuilt against the Figma flow, with a real database and real accounts.
+
+### Design
+Every screen is transcribed from the 1080x1920 Figma frames. Numbers are not
+estimated: `lib/theme.dart` holds the palette straight from the file (cyan
+`#3CBEEE`, orange `#F37C11`, grey `#5D5D5D`, Mukta type) and `fx(context, n)`
+converts a Figma pixel to a logical pixel, so an 880x120 pill button stays
+proportionally an 880x120 pill button on any handset. The curved sheet, the
+610px overlapping circles, the 200x70 toggle and the heart are all rebuilt from
+the source geometry.
+
+### The core screen
+`sight_screen.dart` is the vertical carousel: circles overlap by about 40
+percent, scroll under your thumb, and the focused person is scaled up and
+painted on top with the heart button on their edge. A transparent `PageView`
+owns the gesture; the visible stack is drawn separately so paint order can put
+the focused circle in front. Range is 5-20 m, adjustable in the menu.
+
+### Database
+`lib/services/db.dart` is SQLite (`sqflite`) with six tables - `accounts`,
+`profiles`, `likes`, `matches`, `messages`, `settings` - foreign keys on,
+indexed message threads. Every list in the app is a query. Nothing is held only
+in memory, so likes, matches, chats and profile edits survive a restart and a
+reinstall of the app's process.
+
+### Accounts
+`lib/services/auth.dart` registers and signs in real accounts stored in the
+`accounts` table, with the session in shared preferences.
+
+- **Phone:** enter a number, the app generates a six digit code and asks for it.
+  There is no SMS gateway in a device-only build, so the code is shown on the
+  verify screen. Replace the body of `Auth.requestCode` with your provider's
+  send call and the rest of the flow is unchanged.
+- **Google / Facebook:** these mint a stable per-device identity and create or
+  reuse the matching account. Wiring real OAuth means swapping the identifier
+  in `Auth.signInWith` for the token subject you get back - the account,
+  profile and session handling already work.
+
+Sign out returns you to the join screen with the account intact. Delete account
+removes it and everything attached to it.
+
+### Photos
+Camera and photo library both work through `image_picker`. Picked files are
+copied into the app's documents directory and the path is stored on the
+profile, so photos survive app restarts. Profiles with no photo fall back to
+the flat grey disc from the Figma frames.
+
+### Still fictional
+The eight people you can see are rows seeded into `profiles` on first run
+(`GlancesDb._seed`), and their distances are fixed numbers rather than GPS.
+Whether a like is returned is decided per person and never changes its mind;
+unanswered likes get answered after about 25 seconds and matches write to you
+on their own. Replace the seed and the `_likesBack` heuristic when a server
+exists.
+
+## Notes
+- **Signing:** release builds use the debug key so this works with no keystore
+  setup. Make a real keystore before any Play Store upload.
+- **Package id:** `com.glances.app`.
+- **First launch needs wifi** - Mukta downloads once via `google_fonts`, then
+  caches.
+- **iOS:** run `flutter create --platforms=ios .` here, then build on a Mac.
 
 ## If a build fails
 - Locally: `flutter clean && flutter pub get`, retry.
-- JDK mismatch is the usual cause — Flutter wants JDK 17: `flutter config --jdk-dir "<path to JDK 17>"`.
-- In Actions: open the failed step and read the last ~20 lines. Send them to me and I'll fix it.
+- JDK mismatch is the usual cause - Flutter wants JDK 17:
+  `flutter config --jdk-dir "<path to JDK 17>"`.
+- In Actions: open the failed step and read the last ~20 lines.
 
 ---
 
-## Appendix — build-apk.yml
-
-Paste this into `.github/workflows/build-apk.yml` if you can't open the file from the zip:
+## Appendix - build-apk.yml
 
 ```yaml
 name: Build APK
@@ -89,6 +142,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: flutter_app
 
 jobs:
   apk:
@@ -116,6 +173,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: glances-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 ```

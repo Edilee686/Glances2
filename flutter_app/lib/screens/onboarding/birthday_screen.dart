@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../routes.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
-import 'step_scaffold.dart';
+import '../../widgets/onboarding_shell.dart';
 
 class BirthdayScreen extends StatefulWidget {
   const BirthdayScreen({super.key});
@@ -13,95 +13,77 @@ class BirthdayScreen extends StatefulWidget {
 }
 
 class _BirthdayScreenState extends State<BirthdayScreen> {
-  static const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  static const _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
-  late DateTime value = AppScope.of(context).birthday;
+  DateTime? _value;
 
-  bool get isAdult {
+  @override
+  void initState() {
+    super.initState();
+    _value = AppScope.read(context).me?.birthday;
+  }
+
+  int get _age {
+    final b = _value;
+    if (b == null) return 0;
     final now = DateTime.now();
-    final eighteenth = DateTime(value.year + 18, value.month, value.day);
-    return !eighteenth.isAfter(now);
+    var years = now.year - b.year;
+    if (now.month < b.month || (now.month == b.month && now.day < b.day)) years--;
+    return years;
+  }
+
+  Future<void> _pick() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _value ?? DateTime(now.year - 25, now.month, now.day),
+      firstDate: DateTime(1940),
+      lastDate: DateTime(now.year - 18, now.month, now.day),
+      helpText: 'What is your date of birth?',
+    );
+    if (picked != null) setState(() => _value = picked);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return StepScaffold(
+    final value = _value;
+    return OnboardingShell(
+      prompt: 'What is your date of birth?',
+      subhead: 'One more step and we are done..!',
       step: 4,
-      dark: true,
-      question: 'When were you born?',
-      footnote: isAdult ? 'You must be 18 or older to join Glances.' : 'Glances is for adults only - you must be 18+.',
-      onContinue: () {
-        if (!isAdult) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You must be 18 or older to join Glances.')),
-          );
-          return;
-        }
-        state.set(() => state.birthday = value);
-        Navigator.pushNamed(context, Routes.photo);
-      },
-      child: Container(
-        decoration: BoxDecoration(color: GColors.white, borderRadius: BorderRadius.circular(20)),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        height: 168,
-        child: Row(
-          children: [
-            Expanded(
-              child: _Wheel(
-                count: 31,
-                initial: value.day - 1,
-                label: (i) => (i + 1).toString().padLeft(2, '0'),
-                onChanged: (i) => setState(() => value = DateTime(value.year, value.month, i + 1)),
-              ),
+      footnote: 'You must be at least 18 years old to join Glances',
+      onContinue: value == null || _age < 18
+          ? null
+          : () async {
+              await state.updateMe({'birthday': value.millisecondsSinceEpoch});
+              if (!context.mounted) return;
+              Navigator.pushNamed(context, Routes.photo);
+            },
+      child: GestureDetector(
+        onTap: _pick,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(vertical: fx(context, 40)),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: GColors.white.withValues(alpha: 0.6), width: 2),
             ),
-            Expanded(
-              flex: 2,
-              child: _Wheel(
-                count: 12,
-                initial: value.month - 1,
-                label: (i) => months[i],
-                onChanged: (i) => setState(() => value = DateTime(value.year, i + 1, value.day)),
-              ),
+          ),
+          child: Text(
+            value == null
+                ? 'Tap to choose'
+                : value.day.toString() + ' ' + _months[value.month - 1] + ' ' + value.year.toString(),
+            textAlign: TextAlign.center,
+            style: GText.fig(
+              context,
+              60,
+              value == null ? GColors.white.withValues(alpha: 0.5) : GColors.white,
             ),
-            Expanded(
-              flex: 2,
-              child: _Wheel(
-                count: 80,
-                initial: value.year - 1946,
-                label: (i) => (1946 + i).toString(),
-                onChanged: (i) => setState(() => value = DateTime(1946 + i, value.month, value.day)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Wheel extends StatelessWidget {
-  const _Wheel({required this.count, required this.initial, required this.label, required this.onChanged});
-
-  final int count;
-  final int initial;
-  final String Function(int) label;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListWheelScrollView.useDelegate(
-      itemExtent: 44,
-      diameterRatio: 1.8,
-      physics: const FixedExtentScrollPhysics(),
-      controller: FixedExtentScrollController(initialItem: initial.clamp(0, count - 1)),
-      onSelectedItemChanged: onChanged,
-      childDelegate: ListWheelChildBuilderDelegate(
-        childCount: count,
-        builder: (context, i) => Center(
-          child: Text(label(i), style: GText.title(GColors.ink).copyWith(fontSize: 21)),
+          ),
         ),
       ),
     );

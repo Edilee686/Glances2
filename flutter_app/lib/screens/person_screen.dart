@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import '../routes.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
-import '../widgets/buttons.dart';
-import '../widgets/photo_circle.dart';
-import '../widgets/range_row.dart';
+import '../widgets/fig.dart';
 
 class PersonScreen extends StatelessWidget {
   const PersonScreen({super.key});
@@ -14,187 +12,152 @@ class PersonScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     return Scaffold(
-      backgroundColor: GColors.surface,
+      backgroundColor: GColors.white,
       body: AnimatedBuilder(
         animation: state,
         builder: (context, _) {
-          final person = state.activePerson;
+          final person = state.active;
           if (person == null) {
             return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Nobody here', style: GText.heading(GColors.ink)),
-                    const SizedBox(height: 8),
-                    Text('That person moved out of range.',
-                        textAlign: TextAlign.center, style: GText.body(GColors.muted)),
-                    const SizedBox(height: 18),
-                    PillButton(
-                      label: 'Back to in sight',
-                      background: GColors.blue,
-                      onPressed: () => Navigator.maybePop(context),
-                    ),
-                  ],
-                ),
+              child: FigButton(
+                label: 'Back',
+                width: 500,
+                onTap: () => Navigator.maybePop(context),
               ),
             );
           }
-          final people = state.people;
-          final index = people.indexWhere((p) => p.id == person.id) + 1;
-          return Column(
+
+          final people = state.nearby;
+          final index = people.indexWhere((p) => p.id == person.id);
+          final matched = state.matches.any((m) => m.id == person.id);
+          final liked = state.likeFeed.any((l) => l.outgoing && l.otherId == person.id);
+
+          return Stack(
             children: [
-              Container(
-                color: GColors.white,
-                padding: EdgeInsets.fromLTRB(8, MediaQuery.paddingOf(context).top + 6, 8, 8),
-                child: Row(
-                  children: [
-                    RoundIconButton(
-                      tooltip: 'Back',
-                      onTap: () => Navigator.maybePop(context),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: GColors.muted),
-                    ),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          (index < 1 ? 1 : index).toString() + ' of ' + people.length.toString() + ' nearby',
-                          style: GText.strong(GColors.ink).copyWith(fontSize: 14),
-                          maxLines: 1,
-                        ),
-                      ),
-                    ),
-                    RoundIconButton(
-                      tooltip: 'Report or block',
-                      onTap: () => _showReport(context, state, person.id, person.name),
-                      child: const Icon(Icons.more_horiz_rounded, color: GColors.faint),
-                    ),
-                  ],
-                ),
+              SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.95,
+                width: double.infinity,
+                child: const CurvedSheet(color: GColors.cyan, bulge: 0.115),
               ),
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            RoundIconButton(
-                              tooltip: 'Previous',
-                              background: GColors.white,
-                              onTap: () {
-                                state.rewind();
-                                final p = state.current;
-                                if (p != null) state.openPerson(p.id);
-                              },
-                              child: const Icon(Icons.chevron_left_rounded, color: GColors.muted),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: PhotoCircle(diameter: 236, photoUrl: person.photoUrl, name: person.name),
-                            ),
-                            const SizedBox(width: 8),
-                            RoundIconButton(
-                              tooltip: 'Next',
-                              background: GColors.white,
-                              onTap: () {
-                                state.advance();
-                                final p = state.current;
-                                if (p != null) state.openPerson(p.id);
-                              },
-                              child: const Icon(Icons.chevron_right_rounded, color: GColors.muted),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        Text(person.name + ', ' + person.age.toString(), style: GText.title(GColors.ink)),
-                        const SizedBox(height: 4),
-                        if (state.showProfileInfo) Text(person.city, style: GText.body(GColors.muted)),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(color: GColors.tint, borderRadius: BorderRadius.circular(999)),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: const BoxDecoration(color: GColors.green, shape: BoxShape.circle),
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                person.distanceLabel + ' away - ' + person.seenLabel,
-                                style: GText.mono(GColors.deep),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (state.api.matched.contains(person.id)) ...[
-                          const SizedBox(height: 14),
-                          PillButton(
-                            label: 'Open chat',
-                            background: GColors.blue,
-                            onPressed: () => Navigator.pushNamed(context, Routes.chat),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Container(
-                decoration: const BoxDecoration(
-                  color: GColors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFE8EDF1))),
-                ),
-                padding: EdgeInsets.fromLTRB(24, 10, 24, MediaQuery.paddingOf(context).bottom + 18),
+              SafeArea(
                 child: Column(
                   children: [
-                    RangeRow(
-                      minLabel: 'Now',
-                      maxLabel: '30 min',
-                      min: 0,
-                      max: 30,
-                      value: state.withinMinutes.toDouble(),
-                      onChanged: (v) => state.setMinutes(v.round()),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        RoundIconButton(
-                          tooltip: 'Pass',
-                          size: 54,
-                          onTap: () async {
-                            await state.passActive();
-                            if (!context.mounted) return;
-                            Navigator.maybePop(context);
-                          },
-                          child: const Icon(Icons.close_rounded, color: GColors.faint),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: PillButton(
-                            label: state.api.liked.contains(person.id) ? 'Liked' : 'Like',
-                            background: state.api.liked.contains(person.id) ? GColors.faint : GColors.orange,
-                            onPressed: state.api.liked.contains(person.id)
-                                ? null
-                                : () async {
-                                    final mutual = await state.likeActive();
-                                    if (!context.mounted) return;
-                                    if (mutual) Navigator.pushNamed(context, Routes.match);
-                                  },
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: fx(context, 30), vertical: fx(context, 20)),
+                      child: Row(
+                        children: [
+                          FigChevron(onTap: () => Navigator.maybePop(context)),
+                          const Spacer(),
+                          const FigWordmark(),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () => _sheet(context, state, person.id, person.name),
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: EdgeInsets.all(fx(context, 22)),
+                              child: Icon(Icons.more_horiz_rounded,
+                                  color: GColors.white, size: fx(context, 70)),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FigChevron(
+                          onTap: index > 0 ? () => state.open(people[index - 1].id) : null,
+                          color: GColors.white.withValues(alpha: index > 0 ? 1 : 0.3),
+                        ),
+                        FigAvatar(
+                          size: 760,
+                          photoPath: person.photoPath,
+                          name: person.name,
+                          ringColor: GColors.white,
+                          ringWidth: 20,
+                          shadow: true,
+                        ),
+                        FigChevron(
+                          left: false,
+                          onTap: index >= 0 && index < people.length - 1
+                              ? () => state.open(people[index + 1].id)
+                              : null,
+                          color: GColors.white
+                              .withValues(alpha: index >= 0 && index < people.length - 1 ? 1 : 0.3),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(person.name + ' only finds out if you both like.',
-                        style: GText.small(GColors.faint), textAlign: TextAlign.center),
+                    SizedBox(height: fx(context, 60)),
+                    Text(person.headline, style: GText.fig(context, 50, GColors.white)),
+                    SizedBox(height: fx(context, 12)),
+                    Text(
+                      person.distanceM.toString() + ' m away - seen ' + person.seenLabel,
+                      style: GText.fig(context, 34, GColors.white.withValues(alpha: 0.85)),
+                    ),
+                    const Spacer(),
+                    if (matched)
+                      FigButton(
+                        label: 'Open chat',
+                        background: GColors.white,
+                        foreground: GColors.cyan,
+                        fontSize: 60,
+                        onTap: () {
+                          state.open(person.id);
+                          Navigator.pushNamed(context, Routes.chat);
+                        },
+                      )
+                    else if (liked)
+                      FigButton(
+                        label: 'Like already sent',
+                        background: GColors.grey,
+                        fontSize: 60,
+                        onTap: null,
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: () async {
+                              await state.pass(person.id);
+                              if (!context.mounted) return;
+                              Navigator.maybePop(context);
+                            },
+                            child: Container(
+                              width: fx(context, 150),
+                              height: fx(context, 120),
+                              alignment: Alignment.center,
+                              child: Icon(Icons.close_rounded,
+                                  color: GColors.white, size: fx(context, 72)),
+                            ),
+                          ),
+                          SizedBox(width: fx(context, 20)),
+                          FigButton(
+                            label: 'Send a Like',
+                            background: GColors.white,
+                            foreground: GColors.cyan,
+                            fontSize: 60,
+                            width: 660,
+                            onTap: () async {
+                              final mutual = await state.like(person.id);
+                              if (!context.mounted) return;
+                              if (mutual) Navigator.pushReplacementNamed(context, Routes.match);
+                            },
+                          ),
+                        ],
+                      ),
+                    SizedBox(height: fx(context, 40)),
+                    Text(
+                      matched
+                          ? 'You both looked.'
+                          : liked
+                              ? 'Waiting for a mutual like..'
+                              : person.name + ' only finds out if you both like.',
+                      style: GText.fig(context, 40, GColors.grey),
+                    ),
+                    SizedBox(height: fx(context, 40)),
                   ],
                 ),
               ),
@@ -205,37 +168,35 @@ class PersonScreen extends StatelessWidget {
     );
   }
 
-  void _showReport(BuildContext context, AppState state, String id, String name) {
+  void _sheet(BuildContext context, AppState state, String id, String name) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: GColors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(fx(context, 60))),
+      ),
       builder: (sheet) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.block_rounded, color: GColors.danger),
-              title: Text('Block ' + name, style: GText.strong(GColors.ink)),
-              onTap: () {
-                state.api.block(id);
+              contentPadding: EdgeInsets.symmetric(
+                  horizontal: fx(context, 60), vertical: fx(context, 20)),
+              leading: Icon(Icons.block_rounded, color: GColors.orange, size: fx(context, 64)),
+              title: Text('Block ' + name, style: GText.fig(context, 46, GColors.grey)),
+              onTap: () async {
+                await state.block(id);
+                if (!sheet.mounted) return;
                 Navigator.pop(sheet);
                 Navigator.maybePop(context);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.flag_outlined, color: GColors.muted),
-              title: Text('Report a problem', style: GText.strong(GColors.ink)),
-              onTap: () {
-                Navigator.pop(sheet);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: GColors.deep,
-                    content: Text('Report sent. We will look into it.', style: GText.small(GColors.white)),
-                  ),
-                );
-              },
+              contentPadding: EdgeInsets.symmetric(
+                  horizontal: fx(context, 60), vertical: fx(context, 20)),
+              leading: Icon(Icons.flag_outlined, color: GColors.grey, size: fx(context, 64)),
+              title: Text('Report a problem', style: GText.fig(context, 46, GColors.grey)),
+              onTap: () => Navigator.pop(sheet),
             ),
           ],
         ),

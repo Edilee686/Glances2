@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../routes.dart';
 import '../../state/app_state.dart';
 import '../../theme.dart';
-import 'step_scaffold.dart';
+import '../../widgets/onboarding_shell.dart';
 
 class NameScreen extends StatefulWidget {
   const NameScreen({super.key});
@@ -13,43 +13,49 @@ class NameScreen extends StatefulWidget {
 }
 
 class _NameScreenState extends State<NameScreen> {
-  final TextEditingController controller = TextEditingController();
-  bool seeded = false;
+  late final TextEditingController _controller;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!seeded) {
-      controller.text = AppScope.of(context).name;
-      seeded = true;
-    }
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: AppScope.read(context).me?.name ?? '');
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    return StepScaffold(
+    return OnboardingShell(
+      prompt: 'Please insert your name',
       step: 1,
-      question: 'What should we call you?',
-      footnote: 'This is the only name others see.',
-      onContinue: () {
-        state.set(() => state.name = controller.text.trim());
-        Navigator.pushNamed(context, Routes.gender);
-      },
+      onContinue: _controller.text.trim().isEmpty
+          ? null
+          : () async {
+              await state.updateMe({'name': _controller.text.trim()});
+              if (!context.mounted) return;
+              Navigator.pushNamed(context, Routes.gender);
+            },
       child: TextField(
-        controller: controller,
+        controller: _controller,
+        autofocus: true,
+        textAlign: TextAlign.center,
         textCapitalization: TextCapitalization.words,
-        style: GText.title(GColors.ink).copyWith(fontSize: 24, fontWeight: FontWeight.w600),
-        decoration: const InputDecoration(
-          hintText: 'Your name',
-          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: GColors.blue, width: 2)),
-          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: GColors.blue, width: 2)),
+        onChanged: (_) => setState(() {}),
+        style: GText.fig(context, 60, GColors.white),
+        decoration: InputDecoration(
+          hintText: 'Kathrine',
+          hintStyle: GText.fig(context, 60, GColors.white.withValues(alpha: 0.5)),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: GColors.white.withValues(alpha: 0.6), width: 2),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: GColors.white, width: 3),
+          ),
         ),
       ),
     );
