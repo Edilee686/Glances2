@@ -47,10 +47,37 @@ jobs:
                 lib/widgets/range_row.dart \
                 lib/widgets/wave.dart
 
-      - name: Restore Android scaffolding
-        run: flutter create --platforms=android --org com.glances --project-name glances .
+      - name: Regenerate Android project
+        run: |
+          rm -rf android
+          flutter create --platforms=android --org com.glances --project-name glances .
+
+      - name: Apply app permissions and name
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
+          xml = manifest.read_text()
+
+          perms = (
+              '    <uses-permission android:name="android.permission.INTERNET" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
+              '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
+          )
+          if 'ACCESS_FINE_LOCATION' not in xml:
+              head, sep, tail = xml.partition('>')
+              xml = head + sep + '\n' + perms + tail
+
+          xml = xml.replace('android:label="glances"', 'android:label="Glances"')
+          manifest.write_text(xml)
+          print(xml)
+          PY
 
       - run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Build release APK
         run: flutter build apk --release
