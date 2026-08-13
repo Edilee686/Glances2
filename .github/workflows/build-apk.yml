@@ -26,6 +26,30 @@ jobs:
           cache: true
 
       - run: flutter --version
+
+      - name: Drop superseded sources
+        run: |
+          rm -rf lib/data test
+          rm -f lib/models/activity_item.dart \
+                lib/models/chat_message.dart \
+                lib/models/person.dart \
+                lib/screens/app_drawer.dart \
+                lib/screens/intro_screen.dart \
+                lib/screens/onboarding/step_scaffold.dart \
+                lib/services/api.dart \
+                lib/services/local_api.dart \
+                lib/services/store.dart \
+                lib/widgets/app_header.dart \
+                lib/widgets/buttons.dart \
+                lib/widgets/icons.dart \
+                lib/widgets/mode_switch.dart \
+                lib/widgets/photo_circle.dart \
+                lib/widgets/range_row.dart \
+                lib/widgets/wave.dart
+
+      - name: Restore Android scaffolding
+        run: flutter create --platforms=android --org com.glances --project-name glances .
+
       - run: flutter pub get
 
       - name: Build release APK
