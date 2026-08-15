@@ -1,0 +1,52 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:        # lets you trigger a build by hand from the Actions tab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Android Gradle Plugin needs JDK 17. The runner defaults to a newer JDK
+      # which fails with cryptic Gradle errors, so pin it.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true          # caches the SDK; later builds are much faster
+
+      - run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Non-blocking: reports problems without failing the build, so you still
+      # get an APK while the code is being tidied up. Drop the flags once clean.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        continue-on-error: true
+
+      # GLANCES_API is read by lib/config.dart via String.fromEnvironment.
+      # Set it in the repo under Settings → Secrets and variables → Actions →
+      # Variables. If unset, the default in config.dart is used.
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --dart-define=GLANCES_API=${{ vars.GLANCES_API || 'https://glances.work' }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: glances-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
